@@ -11,24 +11,40 @@ $SqlServer = "apteka"
 $SqlLogin = "sa"
 $CurrentDate = Get-Date -Format _dd_MM_yyyy
 Write-Host "Введите имя базы данных SQL"
-    $SqlBase = Read-Host
+$SqlBase = Read-Host
 Write-Host "Введите пароль SQL сервера"
-    $SqlPassw = Read-Host
+$SqlPassw = Read-Host
 
 #Функции
 function SqlBackup {
     $SqlConnection = New-Object System.Data.SqlClient.SqlConnection
-        $SqlConnection.ConnectionString = "Server=$SqlServer; Database=$SqlBase; User ID=$SqlLogin; Password=$SqlPassw;"
-        $SqlConnection.Open()
-        $SqlCmd = $SqlConnection.CreateCommand()
-        $SqlCmd.CommandText = "BACKUP DATABASE $SqlBase to disk = '$SqlBakPath$SqlBackupName.bac'"
-        $objReader = $SqlCmd.ExecuteReader()
-        while ($objReader.read()) {
-  Write-Output $objReader.GetValue(0)
-        }
-        $objReader.close()
+    $SqlConnection.ConnectionString = "Server=$SqlServer; Database=$SqlBase; User ID=$SqlLogin; Password=$SqlPassw;"
+    $SqlConnection.Open()
+    $SqlCmd = $SqlConnection.CreateCommand()
+    $SqlCmd.CommandText = "BACKUP DATABASE $SqlBase to disk = '$SqlBakPath$SqlBackupName.bac'"
+    $objReader = $SqlCmd.ExecuteReader()
+    while ($objReader.read()) {
+        Write-Output $objReader.GetValue(0)
+    }
+    $objReader.close()
 
 }
+
+function SqlRestore {
+    $SqlConnection = New-Object System.Data.SqlClient.SqlConnection
+    $SqlConnection.ConnectionString = "Server=$SqlServer; Database=$SqlBase; User ID=$SqlLogin; Password=$SqlPassw;"
+    $SqlConnection.Open()
+    $SqlCmd = $SqlConnection.CreateCommand()
+    $SqlCmd.CommandText = "Restore database [$SqlBase]
+                           FROM DISK = '$SqlBakPath$SqlBackupName.bac'"
+    $objReader = $SqlCmd.ExecuteReader()
+    while ($objReader.read()) {
+        Write-Output $objReader.GetValue(0)
+    }
+    $objReader.close()
+    
+}
+
 #Если выбрано копирование.
 if ($Action -eq 1) {
     Write-Host "Введите путь до каталога в который необходимо скопировать данные с сервера."
@@ -37,7 +53,7 @@ if ($Action -eq 1) {
     if ($IsPath -eq "True") {
         $SqlBakPath = "$Destination\"
         Stop-Service $Service1cName
-        $SqlBackupName = $SqlBase+$CurrentDate
+        $SqlBackupName = $SqlBase + $CurrentDate
         SqlBackup
         Copy-Item D:\mail $Destination\mail -Recurse -Container
         Copy-Item C:\Users\Пользователь\AppData\Roaming\Psi+\profiles\default\history $Destination\history -Recurse -Container
@@ -54,12 +70,16 @@ elseif ($Action -eq 2) {
     $Destination = Read-Host
     $IsPath = Test-Path $Destination
     if ($IsPath -eq "True") {
-        Copy-Item $Destination\mail D:\mail  -Recurse -Container
-        Copy-Item $Destination\history C:\Users\Пользователь\AppData\Roaming\Psi+\profiles\default\history  -Recurse -Container
-        Copy-Item $Destination\Desktop C:\Users\Пользователь\Desktop -Recurse -Container
+        $SqlBakPath = "$Destination\"
+        Stop-Service $Service1cName
+        $SqlBackupName = $SqlBase + $CurrentDate
+        SqlRestore
+        Copy-Item $Destination\mail\* D:\mail  -Recurse -Container
+        Copy-Item $Destination\history\* C:\Users\Пользователь\AppData\Roaming\Psi+\profiles\default\history  -Recurse -Container
+        Copy-Item $Destination\Desktop\* C:\Users\Пользователь\Desktop -exclude *.ini -Recurse -Container 
     }
     else {
-        Write-Host "Все плохо"
+        Write-Host "Не найден указаный каталог, либо нет доступа"
     }
 }
 
