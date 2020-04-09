@@ -7,7 +7,7 @@ $Action = read-host
 
 #Глобальные переменные
 $Service1cName = "1C:Server"
-$SqlServer = "apteka"
+$SqlServer = "apteka2"
 $SqlLogin = "sa"
 $CurrentDate = Get-Date -Format _dd_MM_yyyy
 Write-Host "Введите имя базы данных SQL"
@@ -18,7 +18,7 @@ $SqlPassw = Read-Host
 #Функции
 function SqlBackup {
     $SqlConnection = New-Object System.Data.SqlClient.SqlConnection
-    $SqlConnection.ConnectionString = "Server=$SqlServer; Database=$SqlBase; User ID=$SqlLogin; Password=$SqlPassw;"
+    $SqlConnection.ConnectionString = "Server=$SqlServer; Database=master; User ID=$SqlLogin; Password=$SqlPassw;"
     $SqlConnection.Open()
     $SqlCmd = $SqlConnection.CreateCommand()
     $SqlCmd.CommandText = "BACKUP DATABASE $SqlBase to disk = '$SqlBakPath$SqlBackupName.bac'"
@@ -32,11 +32,11 @@ function SqlBackup {
 
 function SqlRestore {
     $SqlConnection = New-Object System.Data.SqlClient.SqlConnection
-    $SqlConnection.ConnectionString = "Server=$SqlServer; Database=$SqlBase; User ID=$SqlLogin; Password=$SqlPassw;"
+    $SqlConnection.ConnectionString = "Server=$SqlServer; Database=master; User ID=$SqlLogin; Password=$SqlPassw;"
     $SqlConnection.Open()
     $SqlCmd = $SqlConnection.CreateCommand()
     $SqlCmd.CommandText = "Restore database [$SqlBase]
-                           FROM DISK = '$SqlBakPath$SqlBackupName.bac'"
+                           FROM DISK = 'D:\$SqlBackupName.bac'"
     $objReader = $SqlCmd.ExecuteReader()
     while ($objReader.read()) {
         Write-Output $objReader.GetValue(0)
@@ -73,10 +73,11 @@ elseif ($Action -eq 2) {
         $SqlBakPath = "$Destination\"
         Stop-Service $Service1cName
         $SqlBackupName = $SqlBase + $CurrentDate
+        Copy-Item $Destination\$SqlBackupName.bac D:\ -Force
+        Copy-Item $Destination\mail\* D:\mail  -Recurse -Container -Force
+        Copy-Item $Destination\history\* C:\Users\Пользователь\AppData\Roaming\Psi+\profiles\default\history  -Recurse -Container -Force
+        Copy-Item $Destination\Desktop\* C:\Users\Пользователь\Desktop -exclude *.ini -Recurse -Container -Force
         SqlRestore
-        Copy-Item $Destination\mail\* D:\mail  -Recurse -Container
-        Copy-Item $Destination\history\* C:\Users\Пользователь\AppData\Roaming\Psi+\profiles\default\history  -Recurse -Container
-        Copy-Item $Destination\Desktop\* C:\Users\Пользователь\Desktop -exclude *.ini -Recurse -Container 
     }
     else {
         Write-Host "Не найден указаный каталог, либо нет доступа"
